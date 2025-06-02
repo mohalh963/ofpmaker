@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OFP Fuel Calculator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background-color: #f8f9fa;
+    }
+    h1 {
+      text-align: center;
+    }
+    .section {
+      margin-bottom: 30px;
+    }
+    .input-group {
+      margin: 10px 0;
+    }
+    label {
+      display: inline-block;
+      width: 150px;
+    }
+    input {
+      padding: 5px;
+      width: 100px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+    }
+    button {
+      padding: 10px 20px;
+      margin-top: 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>OFP Fuel Calculator</h1>
+
+  <div class="section">
+    <h3>Flight Settings</h3>
+    <div class="input-group"><label>Alternate Distance:</label><input id="alternateDistance" type="number" value="50"></div>
+    <div class="input-group"><label>Fuel/hr (USG):</label><input id="fuelPerHour" type="number" value="10"></div>
+    <div class="input-group"><label>Additional Fuel:</label><input id="additionalFuel" type="number" value="0"></div>
+    <div class="input-group"><label>Extra Fuel:</label><input id="extraFuel" type="number" value="0"></div>
+    <div class="input-group"><label>Taxi Fuel:</label><input id="taxiFuel" type="number" value="0.1"></div>
+  </div>
+
+  <div class="section">
+    <h3>Leg Inputs</h3>
+    <table id="legsTable">
+      <thead>
+        <tr>
+          <th>ALT</th><th>WIND ANG</th><th>WIND SPD</th><th>TEMP</th><th>IAS</th><th>TC</th><th>VAR</th><th>DIST</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><input type="number"></td><td><input type="number"></td><td><input type="number"></td>
+          <td><input type="number"></td><td><input type="number"></td><td><input type="number"></td>
+          <td><input type="number"></td><td><input type="number"></td>
+        </tr>
+      </tbody>
+    </table>
+    <button onclick="addLeg()">Add Leg</button>
+    <button onclick="calculate()">Calculate</button>
+  </div>
+
+  <div class="section">
+    <h3>Results</h3>
+    <table id="resultsTable">
+      <thead>
+        <tr>
+          <th>Temp Dev</th><th>TAS</th><th>MC</th><th>WCA</th><th>MH</th><th>GS</th><th>ETE</th><th>Fuel</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h3>Fuel Summary (EASA)</h3>
+    <div id="fuelSummary"></div>
+  </div>
+
+  <script>
+    function addLeg() {
+      const row = document.createElement('tr');
+      for (let i = 0; i < 8; i++) {
+        const cell = document.createElement('td');
+        const input = document.createElement('input');
+        input.type = 'number';
+        cell.appendChild(input);
+        row.appendChild(cell);
+      }
+      document.querySelector('#legsTable tbody').appendChild(row);
+    }
+
+    function calculate() {
+      const rows = document.querySelectorAll('#legsTable tbody tr');
+      const resultsBody = document.querySelector('#resultsTable tbody');
+      resultsBody.innerHTML = '';
+      let totalTripFuel = 0;
+
+      const fuelPerHour = parseFloat(document.getElementById('fuelPerHour').value);
+      const altDist = parseFloat(document.getElementById('alternateDistance').value);
+      const additional = parseFloat(document.getElementById('additionalFuel').value);
+      const extra = parseFloat(document.getElementById('extraFuel').value);
+      const taxi = parseFloat(document.getElementById('taxiFuel').value);
+
+      rows.forEach(row => {
+        const cells = row.querySelectorAll('input');
+        const alt = parseFloat(cells[0].value);
+        const windAngle = parseFloat(cells[1].value);
+        const windSpeed = parseFloat(cells[2].value);
+        const temp = parseFloat(cells[3].value);
+        const ias = parseFloat(cells[4].value);
+        const tc = parseFloat(cells[5].value);
+        const variation = parseFloat(cells[6].value);
+        const dist = parseFloat(cells[7].value);
+
+        const tempDev = temp + 15 - (2 * alt) / 1000;
+        const tas = ias + (alt / 1000 * 2);
+        const wca = Math.asin((windSpeed * Math.sin(windAngle * Math.PI / 180)) / tas) * 180 / Math.PI;
+        const mc = tc;
+        const mh = mc + variation + wca;
+        const gs = tas - (windSpeed * Math.cos(windAngle * Math.PI / 180));
+        const ete = dist / gs * 60;
+        const fuel = ete / 60 * fuelPerHour;
+
+        totalTripFuel += fuel;
+
+        const resultRow = document.createElement('tr');
+        [tempDev, tas, mc, wca, mh, gs, ete, fuel].forEach(val => {
+          const cell = document.createElement('td');
+          cell.textContent = val.toFixed(1);
+          resultRow.appendChild(cell);
+        });
+        resultsBody.appendChild(resultRow);
+      });
+
+      const contingency = totalTripFuel * 0.05;
+      const alternate = (altDist / 300) * fuelPerHour; // assuming 300kt avg GS
+      const finalReserve = 0.5 * fuelPerHour; // 30 min
+      const totalReserve = contingency + alternate + finalReserve + additional;
+      const totalTOFuel = totalTripFuel + totalReserve;
+      const rampFuel = totalTOFuel + extra + taxi;
+      const expectedLanding = totalTOFuel - totalTripFuel;
+
+      document.getElementById('fuelSummary').innerHTML = `
+        Trip Fuel: ${totalTripFuel.toFixed(2)} USG<br>
+        Contingency (5%): ${contingency.toFixed(2)} USG<br>
+        Alternate: ${alternate.toFixed(2)} USG<br>
+        Final Reserve (30 min): ${finalReserve.toFixed(2)} USG<br>
+        Additional: ${additional.toFixed(2)} USG<br>
+        Total Reserve: ${totalReserve.toFixed(2)} USG<br>
+        Total T/O Fuel: ${totalTOFuel.toFixed(2)} USG<br>
+        Extra: ${extra.toFixed(2)} USG<br>
+        Taxi: ${taxi.toFixed(2)} USG<br>
+        Ramp Fuel: ${rampFuel.toFixed(2)} USG<br>
+        Expected Landing Fuel: ${expectedLanding.toFixed(2)} USG
+      `;
+    }
+  </script>
+</body>
+</html>
