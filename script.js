@@ -3,6 +3,17 @@ document.getElementById('calculateBtn').addEventListener('click', calculate);
 
 function addLeg() {
   const row = document.createElement('tr');
+
+  // first two as text inputs
+  for (let i = 0; i < 2; i++) {
+    const cell = document.createElement('td');
+    const input = document.createElement('input');
+    input.type = 'text';
+    cell.appendChild(input);
+    row.appendChild(cell);
+  }
+
+  // next eight as number inputs
   for (let i = 0; i < 8; i++) {
     const cell = document.createElement('td');
     const input = document.createElement('input');
@@ -11,8 +22,10 @@ function addLeg() {
     cell.appendChild(input);
     row.appendChild(cell);
   }
+
   document.querySelector('#legsTable tbody').appendChild(row);
 }
+
 
 function calculate() {
   const rows = document.querySelectorAll('#legsTable tbody tr');
@@ -31,7 +44,7 @@ function calculate() {
     let startingPoint = String(cells[0].value) || "N/A";
     let endingPoint = String(cells[1].value) || "N/A";
     const alt = parseFloat(cells[2].value) || 0;
-    const windAngle = parseFloat(cells[3].value) || 0;
+    const windDirection = parseFloat(cells[3].value) || 0;
     const windSpeed = parseFloat(cells[4].value) || 0;
     const temp = parseFloat(cells[5].value) || 0;
     const ias = parseFloat(cells[6].value) || 0;
@@ -40,13 +53,26 @@ function calculate() {
     const dist = parseFloat(cells[9].value) || 0;
 
     // Calculations
-    const tempDev = (15+(-2)*alt/1000);
+    const tempDev = temp - (15 - ((alt/1000)*2));
     const tas = ias + (alt /1000 * (ias * 0.02));
+    const mc = tc + variation;
+    const windAngle = ( (windDirection - mc + 360) % 360 );
+
+    // 2) Classify component
+    let windComponent;
+    if (windAngle <= 45 || windAngle >= 315) {
+      windComponent = 'headwind';
+    } else if (windAngle >= 135 && windAngle <= 225) {
+      windComponent = 'tailwind';
+    } else if (windAngle > 45 && windAngle < 135) {
+      windComponent = 'crosswind right';
+    } else {
+      windComponent = 'crosswind left';
+    } 
     let wca = 0;
     if (tas !== 0) {
       wca = Math.asin((windSpeed * Math.sin(windAngle * Math.PI / 180)) / tas) * 180 / Math.PI;
     }
-    const mc = tc + variation;
     const mh = mc + variation + wca;
     const gs = tas - (windSpeed * Math.cos(windAngle * Math.PI / 180));
     const ete = dist / gs * 60;
@@ -57,7 +83,15 @@ function calculate() {
     const resultRow = document.createElement('tr');
     [startingPoint, endingPoint,tempDev, tas, mc, wca, mh, gs, ete, fuel].forEach(val => {
       const cell = document.createElement('td');
-      cell.textContent = isNaN(val) ? '0.0' : val.toFixed(1);
+      if (typeof val === 'number') {
+        cell.textContent = val.toFixed(1);
+      }
+      else if (typeof val === 'string' && val.trim() !== '') {
+        cell.textContent = val;
+      }
+      else {
+        cell.textContent = 'N/A';
+      }
       resultRow.appendChild(cell);
     });
     resultsBody.appendChild(resultRow);
