@@ -98,8 +98,8 @@ function calculate() {
   });
 
   // Fuel summary
-  const contingency1 = totalTripFuel * 0.05;
-  const contingency2 = (5/60) * fuelPerHour;
+  const contingency1 = totalTripFuel * 0.2;
+  const contingency2 = (20/60) * fuelPerHour;
   const contingency = Math.max(contingency1, contingency2);
   const alternateFuel = (altDist / 90) * fuelPerHour; // assuming 90kt avg GS
   const finalReserve = 0.75 * fuelPerHour; // 30 min reserve
