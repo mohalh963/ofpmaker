@@ -1,30 +1,15 @@
+// script.js
 
 document.getElementById('addLegBtn').addEventListener('click', addLeg);
 document.getElementById('calculateBtn').addEventListener('click', calculate);
 
 function addLeg() {
-  const row = document.createElement('tr');
-
-  // first two as text inputs
-  for (let i = 0; i < 2; i++) {
-    const cell = document.createElement('td');
-    const input = document.createElement('input');
-    input.type = 'text';
-    cell.appendChild(input);
-    row.appendChild(cell);
-  }
-
-  // next eight as number inputs
-  for (let i = 0; i < 8; i++) {
-    const cell = document.createElement('td');
-    const input = document.createElement('input');
-    input.type = 'number';
-    input.min = '0';
-    cell.appendChild(input);
-    row.appendChild(cell);
-  }
-
-  document.querySelector('#legsTable tbody').appendChild(row);
+  // Clone the first row so new rows inherit all min/max/step/required attributes
+  const tbody = document.querySelector('#legsTable tbody');
+  const template = tbody.querySelector('tr');
+  const newRow = template.cloneNode(true);
+  newRow.querySelectorAll('input').forEach(input => input.value = '');
+  tbody.appendChild(newRow);
 }
 
 function calculate() {
@@ -42,15 +27,13 @@ function calculate() {
   const extra        = parseFloat(document.getElementById('extraFuel').value) || 0;
   const taxi         = parseFloat(document.getElementById('taxiFuel').value) || 0;
 
-  // Validate global fuel burn
+  // Validate global burn
   if (fuelPerHour <= 0) {
     warnings.push('Fuel consumption per hour must be greater than 0.');
   }
 
   rows.forEach((row, i) => {
     const cells = row.querySelectorAll('input');
-
-    // Parse inputs
     const startingPoint = cells[0].value.trim() || 'N/A';
     const endingPoint   = cells[1].value.trim() || 'N/A';
     const alt           = parseFloat(cells[2].value)     || 0;
@@ -62,29 +45,17 @@ function calculate() {
     const variation     = parseFloat(cells[8].value)     || 0;
     const dist          = parseFloat(cells[9].value);
 
-    // Row‐level validation
+    // Row validation
     const rowWarnings = [];
-    if (!cells[6].value || ias <= 0) {
-      rowWarnings.push('IAS must be > 0');
-    }
-    if (!cells[9].value || dist <= 0) {
-      rowWarnings.push('Distance must be > 0');
-    }
-    if (isNaN(windDir) || windDir < 0 || windDir > 360) {
-      rowWarnings.push('Wind angle 0°–360°');
-    }
-    if (isNaN(windSpd) || windSpd < 0) {
-      rowWarnings.push('Wind speed ≥ 0');
-    }
-    if (!isNaN(temp) && (temp < -60 || temp > 50)) {
-      rowWarnings.push('Temp −60° to +50°C');
-    }
-    if (isNaN(tc) || tc < 0 || tc > 360) {
-      rowWarnings.push('True course 0°–360°');
-    }
-    if (Math.abs(variation) > 30) {
-      rowWarnings.push('Variation >30°?');
-    }
+    if (!cells[6].value || ias <= 0)      rowWarnings.push('IAS must be > 0');
+    if (!cells[9].value || dist <= 0)     rowWarnings.push('Distance must be > 0');
+    if (isNaN(windDir) || windDir < 0 || windDir > 360)
+                                         rowWarnings.push('Wind angle 0°–360°');
+    if (isNaN(windSpd) || windSpd < 0)    rowWarnings.push('Wind speed ≥ 0');
+    if (!isNaN(temp) && (temp < -60 || temp > 50))
+                                         rowWarnings.push('Temp −60° to +50°C');
+    if (isNaN(tc) || tc < 0 || tc > 360)  rowWarnings.push('True course 0°–360°');
+    if (Math.abs(variation) > 30)         rowWarnings.push('Variation >30°?');
 
     if (rowWarnings.length) {
       warnings.push(`Leg ${i+1} (${startingPoint}→${endingPoint}): ${rowWarnings.join('; ')}`);
@@ -117,7 +88,7 @@ function calculate() {
 
     totalTripFuel += fuel;
 
-    // Append result
+    // Append results row
     const resultRow = document.createElement('tr');
     const mh        = mc + wca;
     [startingPoint, endingPoint, tempDev, tas, mc, wca, mh, gs, ete, fuel]
@@ -129,15 +100,13 @@ function calculate() {
     resultsBody.appendChild(resultRow);
   });
 
-  // Show warnings if any
+  // Show all warnings (if any)
   if (warnings.length) {
     alert('Please fix the following:\n\n' + warnings.join('\n'));
   }
 
-  // If no valid legs or fuel config, skip summary
-  if (totalTripFuel <= 0 || isNaN(totalTripFuel)) {
-    return;
-  }
+  // Skip summary if nothing valid
+  if (totalTripFuel <= 0 || isNaN(totalTripFuel)) return;
 
   // Fuel summary
   const contingency1    = totalTripFuel * 0.2;
