@@ -110,7 +110,7 @@ function calculate() {
 
   document.getElementById('fuelSummary').innerHTML = `
     <p><strong>Trip Fuel:</strong> ${totalTripFuel.toFixed(2)} USG</p>
-    <p><strong>Contingency (greater value of 5% or 5 min):</strong> ${contingency.toFixed(2)} USG</p>
+    <p><strong>Contingency (greater value of 20% or 20 min):</strong> ${contingency.toFixed(2)} USG</p>
     <p><strong>Alternate Fuel:</strong> ${alternateFuel.toFixed(2)} USG</p>
     <p><strong>Final Reserve (45 min):</strong> ${finalReserve.toFixed(2)} USG</p>
     <p><strong>Additional Fuel:</strong> ${additional.toFixed(2)} USG</p>
